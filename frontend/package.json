@@ -1,0 +1,46 @@
+{
+  "name": "universal-companies-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx next dev",
+    "build": "npx next build",
+    "start": "npx next start",
+    "lint": "npx next lint",
+    "type-check": "tsc --noEmit",
+    "format": "npx prettier --write .",
+    "format:check": "npx prettier --check .",
+    "download-backgrounds": "node ../scripts/download-background-images.js"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "dompurify": "^3.3.1",
+    "framer-motion": "^11.11.7",
+    "isomorphic-dompurify": "^2.34.0",
+    "next": "^14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.0",
+    "react-hot-toast": "^2.4.1",
+    "react-icons": "^5.3.0",
+    "swiper": "^11.1.14",
+    "zod": "^3.23.8",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "axios": "^1.13.2",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.18",
+    "postcss": "^8.4.47",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.8",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3"
+  }
+}

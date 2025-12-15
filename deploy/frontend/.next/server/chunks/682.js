@@ -1,0 +1,1 @@
+"use strict";exports.id=682,exports.ids=[682],exports.modules={20682:(e,o,r)=>{r.r(o),r.d(o,{default:()=>t});let t=(0,r(68570).createProxy)(String.raw`D:\PROJECT\Cursor\Banyco v2\Ecommerce\frontend\components\home\EducationResources\EducationResources.tsx#default`)}};

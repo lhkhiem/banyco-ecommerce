@@ -1,0 +1,139 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.antiSpamMiddleware = void 0;
+const recaptcha_1 = require("../utils/recaptcha");
+const rateLimitStore = new Map();
+// Optimized cleanup: only run if store has entries, use recursive setTimeout to avoid overlap
+function cleanupRateLimitStore() {
+    if (rateLimitStore.size === 0) {
+        // No entries to clean, schedule next check in 5 minutes
+        setTimeout(cleanupRateLimitStore, 5 * 60 * 1000);
+        return;
+    }
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [key, entry] of rateLimitStore.entries()) {
+        if (entry.resetTime < now) {
+            rateLimitStore.delete(key);
+            cleaned++;
+        }
+    }
+    // Schedule next cleanup (sooner if we cleaned many entries)
+    const nextInterval = cleaned > 100 ? 1 * 60 * 1000 : 5 * 60 * 1000;
+    setTimeout(cleanupRateLimitStore, nextInterval);
+}
+// Start cleanup cycle
+cleanupRateLimitStore();
+/**
+ * Anti-spam middleware for form submissions
+ * Implements:
+ * 1. Honeypot field check
+ * 2. Time-based validation (minimum time to fill form)
+ * 3. Rate limiting by IP
+ * 4. Google reCAPTCHA v3 verification (optional)
+ */
+const antiSpamMiddleware = (options) => {
+    const minFormTime = (options?.minFormTime || 3) * 1000; // Convert to milliseconds
+    const maxSubmissions = options?.maxSubmissionsPerHour || 5;
+    const honeypotField = options?.honeypotFieldName || 'website';
+    const recaptchaSecret = options?.recaptchaSecretKey || process.env.RECAPTCHA_SECRET_KEY;
+    const recaptchaMinScore = options?.recaptchaMinScore || 0.5;
+    const requireRecaptcha = options?.requireRecaptcha ?? !!recaptchaSecret;
+    return async (req, res, next) => {
+        try {
+            // 0. Verify reCAPTCHA token if enabled
+            if (requireRecaptcha && recaptchaSecret) {
+                const recaptchaToken = req.body.recaptchaToken;
+                if (!recaptchaToken) {
+                    console.warn(`[AntiSpam] Missing reCAPTCHA token for IP: ${req.ip}`);
+                    return res.status(400).json({
+                        success: false,
+                        error: 'reCAPTCHA verification required',
+                    });
+                }
+                const verification = await (0, recaptcha_1.verifyReCaptchaToken)(recaptchaToken, recaptchaSecret);
+                if (!verification.success) {
+                    console.warn(`[AntiSpam] reCAPTCHA verification failed for IP: ${req.ip}`, verification.error);
+                    return res.status(400).json({
+                        success: false,
+                        error: 'reCAPTCHA verification failed. Please try again.',
+                    });
+                }
+                if (verification.score !== undefined && verification.score < recaptchaMinScore) {
+                    console.warn(`[AntiSpam] reCAPTCHA score too low (${verification.score}) for IP: ${req.ip}`);
+                    return res.status(400).json({
+                        success: false,
+                        error: 'reCAPTCHA verification failed. Please try again.',
+                    });
+                }
+            }
+            // 1. Check honeypot field (should be empty)
+            if (req.body[honeypotField] && req.body[honeypotField].trim() !== '') {
+                console.warn(`[AntiSpam] Honeypot triggered for IP: ${req.ip}`);
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid form submission',
+                });
+            }
+            // 2. Check time-based validation (form start time)
+            const formStartTime = req.body._formStartTime;
+            if (formStartTime) {
+                const timeSpent = Date.now() - parseInt(formStartTime, 10);
+                if (timeSpent < minFormTime) {
+                    console.warn(`[AntiSpam] Form submitted too quickly (${timeSpent}ms) for IP: ${req.ip}`);
+                    return res.status(400).json({
+                        success: false,
+                        error: 'Form submitted too quickly. Please take your time filling out the form.',
+                    });
+                }
+            }
+            // 3. Rate limiting by IP
+            const clientIp = req.ip ||
+                req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                req.connection.remoteAddress ||
+                'unknown';
+            const now = Date.now();
+            const rateLimitKey = `ratelimit:${clientIp}`;
+            const entry = rateLimitStore.get(rateLimitKey);
+            if (entry) {
+                if (entry.resetTime > now) {
+                    // Still within rate limit window
+                    if (entry.count >= maxSubmissions) {
+                        console.warn(`[AntiSpam] Rate limit exceeded for IP: ${clientIp}`);
+                        return res.status(429).json({
+                            success: false,
+                            error: 'Too many submissions. Please try again later.',
+                        });
+                    }
+                    entry.count += 1;
+                }
+                else {
+                    // Reset window
+                    rateLimitStore.set(rateLimitKey, {
+                        count: 1,
+                        resetTime: now + 60 * 60 * 1000, // 1 hour
+                    });
+                }
+            }
+            else {
+                // First submission
+                rateLimitStore.set(rateLimitKey, {
+                    count: 1,
+                    resetTime: now + 60 * 60 * 1000, // 1 hour
+                });
+            }
+            // Remove honeypot, time tracking, and reCAPTCHA fields from body before passing to controller
+            delete req.body[honeypotField];
+            delete req.body._formStartTime;
+            delete req.body.recaptchaToken;
+            next();
+        }
+        catch (error) {
+            console.error('[AntiSpam] Middleware error:', error);
+            // On error, allow request to proceed (fail open)
+            next();
+        }
+    };
+};
+exports.antiSpamMiddleware = antiSpamMiddleware;
+//# sourceMappingURL=antiSpam.js.map

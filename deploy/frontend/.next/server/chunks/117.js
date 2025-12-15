@@ -1,0 +1,1 @@
+"use strict";exports.id=117,exports.ids=[117],exports.modules={30117:(e,t,o)=>{o.r(t),o.d(t,{default:()=>s});let s=(0,o(68570).createProxy)(String.raw`D:\PROJECT\Cursor\Banyco v2\Ecommerce\frontend\components\home\Testimonials\Testimonials.tsx#default`)}};

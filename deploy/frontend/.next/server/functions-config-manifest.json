@@ -1,0 +1,1 @@
+{"version":1,"functions":{"/account/orders":{},"/account/addresses":{},"/account":{},"/account/orders/[id]":{},"/account/profile":{},"/categories":{},"/posts/[slug]":{},"/posts":{},"/services":{},"/login":{},"/checkout/success":{},"/products/[slug]":{},"/checkout/result":{},"/":{},"/contact":{}}}

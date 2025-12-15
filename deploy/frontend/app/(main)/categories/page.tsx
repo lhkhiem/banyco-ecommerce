@@ -1,0 +1,80 @@
+import { Metadata } from 'next';
+import { getPageMetadataFromCMS, generatePageMetadata } from '@/lib/utils/pageMetadata';
+import Image from 'next/image';
+import Link from 'next/link';
+import { fetchProductCategories } from '@/lib/api/categories';
+
+export async function generateMetadata(): Promise<Metadata> {
+  console.log('[Categories Page] generateMetadata called');
+  const data = await getPageMetadataFromCMS('/categories');
+  console.log('[Categories Page] CMS data:', data ? 'Found' : 'Not found');
+  
+  return generatePageMetadata(data, '/categories', {
+    title: 'Danh Mục Sản Phẩm - Banyco',
+    description: 'Khám phá các danh mục sản phẩm spa, salon chuyên nghiệp. Thiết bị massage, chăm sóc da, mỹ phẩm và vật tư làm đẹp.',
+    ogImage: '/images/og-categories.jpg',
+  });
+}
+
+// Force dynamic rendering to ensure metadata is always fresh from CMS
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // No caching for metadata
+
+const getInitials = (name: string) =>
+  name
+    .split(' ')
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('')
+    .slice(0, 2);
+
+export default async function CategoriesPage() {
+  const categories = await fetchProductCategories();
+
+  return (
+    <div className="container-custom py-8">
+      <div className="mb-8">
+        <h1 className="mb-2 text-3xl font-bold text-gray-900">
+          Shop by Category
+        </h1>
+        <p className="text-gray-600">
+          Browse our comprehensive selection of spa and salon categories
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            href={`/categories/${category.slug}`}
+            className="card card-hover flex flex-col items-center p-6 text-center transition-all"
+          >
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-purple-50 text-brand-purple-600">
+              {category.imageUrl ? (
+                <Image
+                  src={category.imageUrl}
+                  alt={category.name}
+                  width={64}
+                  height={64}
+                  className="h-16 w-16 rounded-full object-cover"
+                />
+              ) : (
+                <span className="text-xl font-semibold">{getInitials(category.name)}</span>
+              )}
+            </div>
+            <h3 className="mb-2 text-lg font-semibold text-gray-900">
+              {category.name}
+            </h3>
+            <p className="text-sm text-gray-600">
+              {category.productCount} {category.productCount === 1 ? 'product' : 'products'}
+            </p>
+          </Link>
+        ))}
+        {categories.length === 0 && (
+          <div className="col-span-full rounded-lg bg-gray-50 p-6 text-center text-gray-600">
+            No categories available.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
