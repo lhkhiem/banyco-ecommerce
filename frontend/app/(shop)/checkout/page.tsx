@@ -186,6 +186,14 @@ export default function CheckoutPage() {
         try {
           toast.loading('Đang chuyển đến ZaloPay...');
           
+          console.log('[Checkout] Creating ZaloPay order:', {
+            orderId: order.id,
+            orderNumber: order.orderNumber,
+            amount: Math.round(order.total),
+            appUser: formData.phone || formData.email || order.id,
+            itemsCount: items.length,
+          });
+          
           // ZaloPay requires amount as integer VND (no decimals)
           // order.total is already in VND, just round to integer
           const zalopayResponse = await createZaloPayOrder({
@@ -201,6 +209,15 @@ export default function CheckoutPage() {
             })),
           });
 
+          console.log('[Checkout] ZaloPay response:', {
+            success: zalopayResponse.success,
+            hasData: !!zalopayResponse.data,
+            hasOrderUrl: !!zalopayResponse.data?.order_url,
+            error: zalopayResponse.error,
+            message: zalopayResponse.message,
+            fullResponse: zalopayResponse,
+          });
+
           if (zalopayResponse.success && zalopayResponse.data?.order_url) {
             // Save order info for result page
             if (typeof window !== 'undefined') {
@@ -209,15 +226,47 @@ export default function CheckoutPage() {
             }
             
             toast.dismiss();
+            console.log('[Checkout] Redirecting to ZaloPay:', zalopayResponse.data.order_url);
             // Redirect to ZaloPay payment page
             window.location.href = zalopayResponse.data.order_url;
             return; // Don't continue processing
           } else {
-            throw new Error(zalopayResponse.error || zalopayResponse.message || 'Không thể tạo thanh toán ZaloPay');
+            // Log detailed error information
+            const errorMessage = zalopayResponse.error || zalopayResponse.message || 'Không thể tạo thanh toán ZaloPay';
+            const errorDetails = zalopayResponse.data 
+              ? `return_code: ${zalopayResponse.data.return_code}, return_message: ${zalopayResponse.data.return_message}`
+              : 'No data in response';
+            
+            console.error('[Checkout] ZaloPay order creation failed:', {
+              error: errorMessage,
+              details: errorDetails,
+              fullResponse: zalopayResponse,
+            });
+            
+            throw new Error(`${errorMessage}. ${errorDetails}`);
           }
         } catch (zalopayError: any) {
+          console.error('[Checkout] ZaloPay error caught:', {
+            message: zalopayError?.message,
+            response: zalopayError?.response?.data,
+            status: zalopayError?.response?.status,
+            stack: zalopayError?.stack,
+          });
+          
           toast.dismiss();
-          toast.error(handleApiError(zalopayError));
+          
+          // Provide more detailed error message
+          let errorMessage = handleApiError(zalopayError);
+          if (zalopayError?.response?.data?.data) {
+            const zpData = zalopayError.response.data.data;
+            if (zpData.return_message) {
+              errorMessage = `ZaloPay: ${zpData.return_message}`;
+            } else if (zpData.sub_return_message) {
+              errorMessage = `ZaloPay: ${zpData.sub_return_message}`;
+            }
+          }
+          
+          toast.error(errorMessage);
           setIsProcessing(false);
           return;
         }

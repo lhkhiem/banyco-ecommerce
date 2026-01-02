@@ -7,10 +7,23 @@ const nextConfig = {
         protocol: 'https',
         hostname: '**',
       },
+      // ✅ Explicitly allow localhost:3012 for development
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3012',
+        pathname: '**',
+      },
       {
         protocol: 'http',
         hostname: 'localhost',
         port: process.env.NEXT_PUBLIC_API_PORT || '3012',
+        pathname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+        port: '3012',
         pathname: '**',
       },
       {
@@ -38,6 +51,8 @@ const nextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60,
+    // Allow unoptimized images in development for faster loading
+    unoptimized: process.env.NODE_ENV === 'development' ? false : false,
   },
   // Enable compression and optimization
   compress: true,

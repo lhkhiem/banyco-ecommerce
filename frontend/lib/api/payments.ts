@@ -46,13 +46,48 @@ export const createZaloPayOrder = async (
   payload: CreateZaloPayOrderPayload
 ): Promise<CreateZaloPayOrderResponse> => {
   try {
+    console.log('[Payments API] Creating ZaloPay order with payload:', {
+      orderId: payload.orderId,
+      amount: payload.amount,
+      description: payload.description,
+      appUser: payload.appUser,
+      itemsCount: payload.items?.length || 0,
+    });
+    
     const response = await apiClient.post<CreateZaloPayOrderResponse>(
       buildApiUrl('payments/zalopay/create'),
       payload
     );
+    
+    console.log('[Payments API] ZaloPay order response:', {
+      success: response.data.success,
+      hasData: !!response.data.data,
+      hasOrderUrl: !!response.data.data?.order_url,
+      error: response.data.error,
+      message: response.data.message,
+    });
+    
     return response.data;
   } catch (error: any) {
-    console.error('[Payments API] Create ZaloPay order error:', error);
+    console.error('[Payments API] Create ZaloPay order error:', {
+      message: error?.message,
+      response: error?.response?.data,
+      status: error?.response?.status,
+      statusText: error?.response?.statusText,
+      request: {
+        url: error?.config?.url,
+        method: error?.config?.method,
+        data: error?.config?.data,
+      },
+    });
+    
+    // If error response has data, include it in the error
+    if (error?.response?.data) {
+      const errorWithData = new Error(error.response.data.message || error.response.data.error || error.message);
+      (errorWithData as any).response = error.response;
+      throw errorWithData;
+    }
+    
     throw error;
   }
 };

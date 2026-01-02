@@ -85,6 +85,17 @@ export function handleApiError(error: unknown): string {
         return `Sản phẩm "${data.productName}" không đủ số lượng. Còn lại: ${data.availableStock}, Bạn yêu cầu: ${data.requestedQuantity}`;
       }
       
+      // Handle ZaloPay specific errors
+      if (data?.data) {
+        const zpData = data.data;
+        if (zpData.return_message) {
+          return `ZaloPay: ${zpData.return_message}`;
+        }
+        if (zpData.sub_return_message) {
+          return `ZaloPay: ${zpData.sub_return_message}`;
+        }
+      }
+      
       // Return error message from server
       return data?.error || data?.message || 'Đã xảy ra lỗi khi xử lý yêu cầu';
     } else if (error.request) {
@@ -92,5 +103,11 @@ export function handleApiError(error: unknown): string {
       return 'Không có phản hồi từ server. Vui lòng kiểm tra kết nối của bạn.';
     }
   }
+  
+  // Handle non-axios errors
+  if (error instanceof Error) {
+    return error.message;
+  }
+  
   return 'Đã xảy ra lỗi không mong muốn';
 }

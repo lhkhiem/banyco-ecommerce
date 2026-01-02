@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FiShare2, FiStar, FiCopy, FiFacebook, FiTwitter } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 import Breadcrumb from '@/components/ui/Breadcrumb/Breadcrumb';
 import AddToCartButton from '@/components/product/AddToCartButton/AddToCartButton';
 import ProductCard from '@/components/product/ProductCard/ProductCard';
 import SafeImage from '@/components/ui/SafeImage/SafeImage';
 import { sanitizeContentHtml } from '@/lib/utils/sanitizeHtml';
+import { useCartStore } from '@/lib/stores/cartStore';
 
 const FALLBACK_IMAGE = '/images/placeholder-product.jpg';
 
@@ -108,6 +110,7 @@ const formatCurrency = formatPrice; // Use VNĐ formatter
 
 export default function ProductDetailClient({ product }: ProductDetailClientProps) {
   const router = useRouter();
+  const { clearCart, addItem } = useCartStore();
   const variants = useMemo(() => product.variants ?? [], [product.variants]);
   const hasVariants = product.variantCount > 1 && variants.length > 0;
   const [selectedImage, setSelectedImage] = useState(0);
@@ -115,6 +118,7 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
   const [activeTab, setActiveTab] = useState<'details' | 'reviews'>('details');
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [isBuyingNow, setIsBuyingNow] = useState(false);
   const shareMenuRef = useRef<HTMLDivElement>(null);
 
   const defaultVariant = useMemo(() => {
@@ -566,6 +570,54 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
     setShowShareMenu(false);
   }, [productUrl, product.name]);
 
+  const handleBuyNow = useCallback(async () => {
+    // Validate stock and variant selection
+    if (hasVariants && (!activeVariant || currentStock <= 0)) {
+      toast.error('Vui lòng chọn biến thể sản phẩm và đảm bảo sản phẩm còn hàng.');
+      return;
+    }
+
+    if (!hasVariants && currentStock <= 0) {
+      toast.error('Sản phẩm đã hết hàng.');
+      return;
+    }
+
+    setIsBuyingNow(true);
+
+    try {
+      // Clear cart and add only this product
+      clearCart();
+      addItem({
+        productId: product.id,
+        variantId: selectedVariantId ?? undefined,
+        quantity: quantity,
+        price: priceForCart,
+        name: productTitleForDisplay,
+        image: imageForCart ?? '/images/placeholder-product.jpg',
+      });
+
+      // Navigate to checkout
+      router.push('/checkout');
+    } catch (error) {
+      console.error('Failed to buy now:', error);
+      toast.error('Không thể thực hiện mua ngay. Vui lòng thử lại.');
+      setIsBuyingNow(false);
+    }
+  }, [
+    hasVariants,
+    activeVariant,
+    currentStock,
+    clearCart,
+    addItem,
+    product.id,
+    selectedVariantId,
+    quantity,
+    priceForCart,
+    productTitleForDisplay,
+    imageForCart,
+    router,
+  ]);
+
   const renderDescription = () => {
     if (!product.description) {
       return (
@@ -753,8 +805,12 @@ export default function ProductDetailClient({ product }: ProductDetailClientProp
                   disabled={hasVariants ? !activeVariant || currentStock <= 0 : currentStock <= 0}
                 />
                 <div className="flex gap-3">
-                  <button className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-3 text-gray-700 hover:bg-gray-50">
-                    Mua ngay
+                  <button
+                    onClick={handleBuyNow}
+                    disabled={hasVariants ? !activeVariant || currentStock <= 0 : currentStock <= 0 || isBuyingNow}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-3 text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-white"
+                  >
+                    {isBuyingNow ? 'Đang xử lý...' : 'Mua ngay'}
                   </button>
                   <div className="relative" ref={shareMenuRef}>
                     <button

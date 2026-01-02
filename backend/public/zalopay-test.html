@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test ZaloPay Integration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .result.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        .result.show {
+            display: block;
+        }
+        .config-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .config-item {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .config-item strong {
+            display: block;
+            margin-bottom: 4px;
+            color: #333;
+        }
+        .config-item.set {
+            background: #d4edda;
+            color: #155724;
+        }
+        .config-item.missing {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .link-button {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 24px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .link-button:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test ZaloPay Integration</h1>
+        <p class="subtitle">Kiểm tra và test tích hợp ZaloPay</p>
+
+        <!-- Config Check Section -->
+        <div class="section">
+            <div class="section-title">1. Kiểm tra cấu hình</div>
+            <button id="checkConfigBtn" onclick="checkConfig()">Kiểm tra cấu hình</button>
+            <div id="configResult" class="result"></div>
+        </div>
+
+        <!-- Test Create Order Section -->
+        <div class="section">
+            <div class="section-title">2. Test tạo ZaloPay Order</div>
+            <div class="form-group">
+                <label>Số tiền (VND):</label>
+                <input type="number" id="amount" value="10000" min="1000" step="1000">
+            </div>
+            <div class="form-group">
+                <label>Mô tả:</label>
+                <input type="text" id="description" value="Test order ZaloPay">
+            </div>
+            <div class="form-group">
+                <label>Số điện thoại (appUser):</label>
+                <input type="text" id="appUser" value="0900000000" placeholder="0900000000">
+            </div>
+            <button id="testCreateBtn" onclick="testCreateOrder()">Tạo ZaloPay Order</button>
+            <div id="createResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin.replace(':3000', ':3012') || 'http://localhost:3012';
+
+        async function checkConfig() {
+            const btn = document.getElementById('checkConfigBtn');
+            const result = document.getElementById('configResult');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Đang kiểm tra...';
+            result.className = 'result info show';
+            result.innerHTML = 'Đang kiểm tra cấu hình...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/payments/zalopay/test-config`);
+                const data = await response.json();
+
+                if (data.success) {
+                    result.className = 'result success show';
+                    let html = '<strong>✅ Cấu hình ZaloPay:</strong><div class="config-status">';
+                    
+                    Object.entries(data.config).forEach(([key, value]) => {
+                        const isSet = value === 'SET' || (typeof value === 'string' && value !== 'NOT SET' && value !== 'MISSING');
+                        html += `<div class="config-item ${isSet ? 'set' : 'missing'}">
+                            <strong>${key}:</strong>
+                            <span>${value}</span>
+                        </div>`;
+                    });
+                    
+                    html += '</div>';
+                    result.innerHTML = html;
+                } else {
+                    result.className = 'result error show';
+                    result.innerHTML = `<strong>❌ Lỗi:</strong> ${data.error || 'Không thể kiểm tra cấu hình'}`;
+                }
+            } catch (error) {
+                result.className = 'result error show';
+                result.innerHTML = `<strong>❌ Lỗi kết nối:</strong> ${error.message}<br>Đảm bảo backend đang chạy trên port 3012`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Kiểm tra cấu hình';
+            }
+        }
+
+        async function testCreateOrder() {
+            const btn = document.getElementById('testCreateBtn');
+            const result = document.getElementById('createResult');
+            const amount = document.getElementById('amount').value;
+            const description = document.getElementById('description').value;
+            const appUser = document.getElementById('appUser').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>Đang tạo order...';
+            result.className = 'result info show';
+            result.innerHTML = 'Đang tạo ZaloPay order...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/payments/zalopay/test-create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        amount: parseInt(amount),
+                        description: description,
+                        appUser: appUser,
+                    }),
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.data.order_url) {
+                    result.className = 'result success show';
+                    result.innerHTML = `
+                        <strong>✅ Tạo order thành công!</strong><br><br>
+                        <strong>App Trans ID:</strong> ${data.data.app_trans_id}<br>
+                        <strong>Return Code:</strong> ${data.data.return_code}<br>
+                        <strong>Message:</strong> ${data.data.return_message}<br><br>
+                        <a href="${data.data.order_url}" target="_blank" class="link-button">
+                            🔗 Mở trang thanh toán ZaloPay
+                        </a>
+                    `;
+                } else {
+                    result.className = 'result error show';
+                    result.innerHTML = `<strong>❌ Lỗi:</strong> ${data.error || data.message || 'Không thể tạo order'}<br>${data.details ? JSON.stringify(data.details, null, 2) : ''}`;
+                }
+            } catch (error) {
+                result.className = 'result error show';
+                result.innerHTML = `<strong>❌ Lỗi kết nối:</strong> ${error.message}<br>Đảm bảo backend đang chạy trên port 3012`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Tạo ZaloPay Order';
+            }
+        }
+
+        // Auto check config on load
+        window.addEventListener('load', () => {
+            setTimeout(checkConfig, 500);
+        });
+    </script>
+</body>
+</html>
+

@@ -52,6 +52,17 @@ export async function createZaloPayOrder(params: CreateOrderParams): Promise<{
   response: ZaloPayCreateOrderResponse;
   app_trans_id: string;
 }> {
+  // Log environment variables for debugging (without exposing sensitive values)
+  console.log('[ZaloPay] Checking configuration:', {
+    ZP_APP_ID: process.env.ZP_APP_ID ? `${process.env.ZP_APP_ID.substring(0, 2)}...` : 'MISSING',
+    ZP_KEY1: process.env.ZP_KEY1 ? 'SET' : 'MISSING',
+    ZP_CALLBACK_URL: process.env.ZP_CALLBACK_URL || 'NOT SET (will auto-generate)',
+    ZP_CALLBACK_KEY: process.env.ZP_CALLBACK_KEY ? 'SET' : 'MISSING',
+    ZP_API_BASE: process.env.ZP_API_BASE || 'DEFAULT',
+    API_DOMAIN: process.env.API_DOMAIN || 'NOT SET',
+    NODE_ENV: process.env.NODE_ENV,
+  });
+
   const app_id = Number(process.env.ZP_APP_ID);
   const key1 = process.env.ZP_KEY1;
   // Build callback URL from API domain if not provided
@@ -61,6 +72,11 @@ export async function createZaloPayOrder(params: CreateOrderParams): Promise<{
     const missing: string[] = [];
     if (!app_id) missing.push('ZP_APP_ID');
     if (!key1) missing.push('ZP_KEY1');
+    console.error('[ZaloPay] Configuration check failed:', {
+      ZP_APP_ID: process.env.ZP_APP_ID,
+      ZP_KEY1: process.env.ZP_KEY1 ? 'EXISTS' : 'MISSING',
+      missing,
+    });
     throw new Error(`ZaloPay configuration missing: ${missing.join(', ')}`);
   }
   
@@ -174,6 +190,18 @@ export async function createZaloPayOrder(params: CreateOrderParams): Promise<{
         timeout: 30000,
       }
     );
+
+    // Log full response for debugging QR code issue
+    console.log('[ZaloPay] Create order response:', {
+      return_code: data.return_code,
+      return_message: data.return_message,
+      sub_return_code: data.sub_return_code,
+      sub_return_message: data.sub_return_message,
+      has_order_url: !!data.order_url,
+      has_zp_trans_token: !!data.zp_trans_token,
+      has_order_token: !!data.order_token,
+      order_url: data.order_url ? data.order_url.substring(0, 100) + '...' : 'MISSING',
+    });
 
     return { body, response: data, app_trans_id };
   } catch (error) {

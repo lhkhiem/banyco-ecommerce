@@ -7,6 +7,138 @@ import { getSiteUrl } from '../utils/domainUtils';
 const router = Router();
 
 /**
+ * Test ZaloPay configuration
+ * GET /api/payments/zalopay/test-config
+ * Returns configuration status (without exposing sensitive values)
+ */
+router.get('/zalopay/test-config', async (req: Request, res: Response) => {
+  return res.json({
+    success: true,
+    config: {
+      ZP_APP_ID: process.env.ZP_APP_ID ? 'SET' : 'MISSING',
+      ZP_KEY1: process.env.ZP_KEY1 ? 'SET' : 'MISSING',
+      ZP_CALLBACK_KEY: process.env.ZP_CALLBACK_KEY ? 'SET' : 'MISSING',
+      ZP_CALLBACK_URL: process.env.ZP_CALLBACK_URL || 'NOT SET (will auto-generate)',
+      ZP_REDIRECT_URL: process.env.ZP_REDIRECT_URL || 'NOT SET (will auto-generate)',
+      ZP_API_BASE: process.env.ZP_API_BASE || 'DEFAULT (https://sb-openapi.zalopay.vn/v2)',
+      API_DOMAIN: process.env.API_DOMAIN || 'NOT SET',
+      FRONTEND_DOMAIN: process.env.FRONTEND_DOMAIN || 'NOT SET',
+      NODE_ENV: process.env.NODE_ENV,
+    },
+  });
+});
+
+/**
+ * Test ZaloPay order creation (for testing without real order)
+ * POST /api/payments/zalopay/test-create
+ * Body: { amount, description, appUser, items? }
+ * This creates a test ZaloPay order without requiring a real order in database
+ */
+router.post('/zalopay/test-create', async (req: Request, res: Response) => {
+  try {
+    const { amount, description, appUser, items } = req.body;
+
+    // Default values for testing
+    const testAmount = amount || 10000; // 10,000 VND
+    const testDescription = description || 'Test order ZaloPay';
+    const testAppUser = appUser || '0900000000';
+    const testItems = items || [
+      {
+        itemid: 'test-product-1',
+        itemname: 'Sản phẩm test',
+        itemquantity: 1,
+        itemprice: testAmount,
+      },
+    ];
+
+    console.log('[Payments] Test ZaloPay order creation:', {
+      amount: testAmount,
+      description: testDescription,
+      appUser: testAppUser,
+      itemsCount: testItems.length,
+    });
+
+    // Create ZaloPay order
+    const { body, response, app_trans_id } = await createZaloPayOrder({
+      orderId: `TEST-${Date.now()}`, // Use timestamp as test order ID
+      amount: testAmount,
+      description: testDescription,
+      appUser: testAppUser,
+      items: testItems,
+    });
+
+    // Check if ZaloPay returned success
+    if (response.return_code !== 1) {
+      console.error('[Payments] Test ZaloPay create order failed:', {
+        return_code: response.return_code,
+        return_message: response.return_message,
+        sub_return_code: response.sub_return_code,
+        sub_return_message: response.sub_return_message,
+      });
+      return res.status(400).json({
+        success: false,
+        error: 'ZaloPay order creation failed',
+        message: response.return_message || response.sub_return_message || 'Failed to create ZaloPay order',
+        data: {
+          return_code: response.return_code,
+          return_message: response.return_message,
+          sub_return_code: response.sub_return_code,
+          sub_return_message: response.sub_return_message,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'ZaloPay order created successfully',
+      data: {
+        app_trans_id,
+        order_url: response.order_url,
+        zp_trans_token: response.zp_trans_token,
+        return_code: response.return_code,
+        return_message: response.return_message,
+        redirect_url: response.order_url, // For easy testing
+      },
+    });
+  } catch (error: any) {
+    console.error('[Payments] Test ZaloPay order error:', {
+      message: error?.message,
+      stack: error?.stack,
+      response: error?.response?.data,
+    });
+
+    // Check if it's a configuration error
+    if (error?.message?.includes('ZaloPay configuration missing')) {
+      return res.status(500).json({
+        success: false,
+        error: 'ZaloPay configuration error',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? {
+          ZP_APP_ID: process.env.ZP_APP_ID ? 'Set' : 'Missing',
+          ZP_KEY1: process.env.ZP_KEY1 ? 'Set' : 'Missing',
+          ZP_CALLBACK_URL: process.env.ZP_CALLBACK_URL ? 'Set' : 'Missing',
+        } : undefined,
+      });
+    }
+
+    // Check if it's a ZaloPay API error
+    if (error?.message?.includes('ZaloPay API error')) {
+      return res.status(400).json({
+        success: false,
+        error: 'ZaloPay API error',
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to create test ZaloPay order',
+      message: error?.message || 'An unexpected error occurred',
+    });
+  }
+});
+
+/**
  * Create ZaloPay payment
  * POST /api/payments/zalopay/create
  * Body: { orderId, amount, description, appUser, items?, embedData? }

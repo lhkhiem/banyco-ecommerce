@@ -430,6 +430,9 @@ app.use('/api/health', healthRoutes); // Health check
     // Static file serving (fallback for local files)
     app.use('/uploads', express.static(uploadDir, staticOptions));
     app.use('/uploads', express.static(path.resolve(__dirname, '../uploads'), staticOptions));
+    
+    // Serve test HTML files from public directory
+    app.use(express.static(path.resolve(__dirname, '../public')));
   } catch (e) {
     console.warn('Failed to ensure upload/temp dirs:', e);
   }
